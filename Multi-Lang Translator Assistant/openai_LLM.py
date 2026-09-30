@@ -1,13 +1,9 @@
 import os 
 from dotenv import load_dotenv 
 from openai import OpenAI
+import gradio as gr
 
-load_dotenv() 
-
-client = OpenAI(
-    api_key=os.getenv("GROQ_API_KEY"),
-    base_url="https://api.groq.com/openai/v1",
-)
+load_dotenv()
 
 languages = {
 	"Hindi": "You are a translation system. Translate the user's text into Hindi. Return only the translation.",
@@ -16,9 +12,16 @@ languages = {
 }
 
 def language_translator(user_ques, language):
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise gr.Error("Set GROQ_API_KEY in your .env file to translate text.")
 
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.groq.com/openai/v1",
+    )
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-20b",
         messages=[
             {"role": "system", "content": languages[language]},
             {"role": "user", "content": user_ques},
@@ -28,17 +31,14 @@ def language_translator(user_ques, language):
     )
     return response.choices[0].message.content
 
-print("Select the language to translate into:")
-for index, language_name in enumerate(languages, start=1):
-    print(f"{index}. {language_name}")
-
-while True:
-    choice = input("Enter a number: ").strip()
-    if choice.isdigit() and 1 <= int(choice) <= len(languages):
-        language = list(languages)[int(choice) - 1]
-        break
-    print("Please enter a valid language number.")
-
-user_ques = input("Enter your text: ")
-output = language_translator(user_ques, language)
-print(f"Translated text in {language}: {output}")
+demo = gr.Interface(
+    fn=language_translator,
+    inputs=[
+        gr.Textbox(label="Enter your text"),
+        gr.Dropdown(choices=list(languages.keys()), label="Select a language")
+    ],
+    outputs=gr.Textbox(label="Translated text") ,
+    title="Multi-Language Translator Assistant",
+    description="This application translates text into multiple languages using the LLaMA LLM. Enter your text and select a language to get the translation."
+)
+demo.launch(inbrowser=True)

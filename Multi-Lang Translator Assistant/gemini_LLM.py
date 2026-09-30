@@ -2,10 +2,9 @@ from google import genai
 import os 
 from dotenv import load_dotenv 
 from google.genai import types
+import gradio as gr
 
-load_dotenv() 
-
-client = genai.Client(api_key=os.getenv("GENAI_API_KEY"))
+load_dotenv()
 
 languages = {
 	"Hindi": "You are a translation system. Translate the user's text into Hindi. Return only the translation.",
@@ -14,7 +13,11 @@ languages = {
 }
 
 def language_translator(user_ques, language):
+    api_key = os.getenv("GENAI_API_KEY")
+    if not api_key:
+        raise gr.Error("Set GENAI_API_KEY in your .env file to translate text.")
 
+    client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model="gemini-3.8-flash",
         contents=user_ques,
@@ -26,17 +29,14 @@ def language_translator(user_ques, language):
     )
     return response.text
 
-print("Select the language to translate into:")
-for index, language_name in enumerate(languages, start=1):
-    print(f"{index}. {language_name}")
-
-while True:
-    choice = input("Enter a number: ").strip()
-    if choice.isdigit() and 1 <= int(choice) <= len(languages):
-        language = list(languages)[int(choice) - 1]
-        break
-    print("Please enter a valid language number.")
-
-user_ques = input("Enter your text: ")
-output = language_translator(user_ques, language)
-print(f"Translated text in {language}: {output}")
+demo = gr.Interface(
+    fn=language_translator,
+    inputs=[
+        gr.Textbox(label="Enter your text"),
+        gr.Dropdown(choices=list(languages.keys()), label="Select a language")
+    ],
+    outputs=gr.Textbox(label="Translated text") , 
+    title="Multi-Language Translator Assistant",
+    description="This application translates text into multiple languages using the Gemini LLM. Enter your text and select a language to get the translation."
+)
+demo.launch(inbrowser=True)
